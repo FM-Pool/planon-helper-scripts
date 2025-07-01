@@ -138,6 +138,27 @@ var $PRE_CONFIGS = [
                 replace: '01-04-2025'
             }
         ]
+    },
+    {
+        name: 'MKCO-prefatturazione_SpaceUsage_(04e)-Comp_Tipo_Ed_AreaRischio',
+        params: [
+            {
+                search: '31-03-2025',
+                replace: '30-04-2025'
+            },
+            {
+                search: '01-03-2025',
+                replace: '01-04-2025'
+            },
+            {
+                search: '28-02-2025',
+                replace: '31-03-2025'
+            },
+            {
+                search: '01-02-2025',
+                replace: '01-03-2025'
+            }
+        ]
     }
 ];
 
