@@ -21,18 +21,19 @@ const MAIN_PANEL_ID = 'FMPool-SetTranslation';
 class SetTranslation {
 
     isDebug = true;
-    
+
+    // Planon UI
     translateNameLangs = [];
 
-    selectedTranslateNameIndex;
-
+    // file
     fileHeaders = [];
-
     rowFileData = [];
-
-    selectedFileIndex;
-    
     headerRow = 9;
+
+    // translation Config
+    selectedTranslateNameIndex;
+    selectedFileIndex;
+    configs;
 
     constructor() {
         if (SetTranslation._instance) {
@@ -51,7 +52,6 @@ class SetTranslation {
                 $(SELECTOR_FOR_ADDING_PANEL).append(MAIN_PANEL);
                 this.addControls();
             });
-            
         });
     }
 
@@ -65,32 +65,68 @@ class SetTranslation {
         $(".btn-start").click(function () {
             SetTranslation._instance.startTranslation();
         });
-        $("#csv-lang-file").on("change", function(event) { 
+        $("#csv-lang-file").on("change", function (event) {
             SetTranslation._instance.readLangCsvFile(event);
         });
         SetTranslation._instance.debug(["#fmp-translation-index onChange", $("#fmp-translation-index")]);
-        $("#fmp-translation-index").on("change", function() { 
+        $("#fmp-translation-index").on("change", function () {
             SetTranslation._instance.debug(["#fmp-translation-index onChange", this]);
             SetTranslation._instance.selectedTranslateNameIndex = this.value;
             SetTranslation._instance.setTranslationConfig();
         });
         SetTranslation._instance.debug(["#fmp-csv-file-index onChange", $("#fmp-csv-file-index")]);
-        $("#fmp-csv-file-index").on("change", function() { 
+        $("#fmp-csv-file-index").on("change", function () {
             SetTranslation._instance.debug(["#fmp-csv-file-index onChange", this]);
             SetTranslation._instance.selectedFileIndex = this.value;
             SetTranslation._instance.setTranslationConfig();
         });
     }
 
-    startTranslation(){
+    startTranslation() {
         SetTranslation._instance.debug("Start translation");
+        SetTranslation._instance.prepareTranslationConfig();
+        if(SetTranslation._instance.configs.length > 0){
+            SetTranslation._instance.log("Config okay. Start setting translations.");
+        } else {
+            SetTranslation._instance.log("No replacement configured. Please check config.");
+        }
     }
 
-    setTranslationAndSave(){
+    prepareTranslationConfig() {
+        SetTranslation._instance.debug(["prepareTranslationConfig", $(".translation-config-row")]);
+        SetTranslation._instance.log("Prepare Config");
+        SetTranslation._instance.configs = [];
+        $(".translation-config-row").each(function (index) {
+            SetTranslation._instance.debug([".translation-config-row", $(this)]);
+            var selectedFileColumn = $(this).find('select').val();
+            if (selectedFileColumn != '') {
+                var selectedTranslateNameCol = $(this).find('span').text();
+                SetTranslation._instance.debug(["Found valid config row",
+                    "targetLang: " + selectedTranslateNameCol,
+                    "indexLang: " + SetTranslation._instance.selectedTranslateNameIndex,
+                    "sourceColumnIndex: " + SetTranslation._instance.selectedFileIndex,
+                    "sourceColumnTarget: " + selectedFileColumn,
+                    "sourceColumns: " + SetTranslation._instance.fileHeaders,
+                    SetTranslation._instance.rowFileData]);
+                SetTranslation._instance.configs.push(
+                    new TranslationConfig(
+                        selectedTranslateNameCol,
+                        SetTranslation._instance.selectedTranslateNameIndex,
+                        SetTranslation._instance.selectedFileIndex,
+                        selectedFileColumn,
+                        SetTranslation._instance.fileHeaders,
+                        SetTranslation._instance.rowFileData,
+                    )
+                );
+            }
+        });
+    }
+
+    setTranslationAndSave() {
         SetTranslation._instance.debug("Set translation");
         $("span.editButton")[0].click();
         SetTranslation._instance.waitForElm('input.cellEditor').then((elm) => {
-            elm.value="asdsad";
+            elm.value = "asdsad";
             // Click another element to accept input
             $("span.editButton")[1].click();
             var saveButton = $("a.actionButton.BomSave.btn");
@@ -98,18 +134,18 @@ class SetTranslation {
             SetTranslation._instance.waitForElm('a.BomSave[aria-disabled="false"]').then((elm) => {
                 SetTranslation._instance.debug(["click save Translation", $(elm)]);
                 $(elm).click();
-            }); 
+            });
 
-        }); 
+        });
     }
 
-    getLangFromPicklist(){
+    getLangFromPicklist() {
         this.debug("start getLangFromPicklist");
         SetTranslation._instance.translateNameLangs = [];
         var table = $(SELECTOR_FOR_TRANSLATION_TABLE).parent().parent().parent();
         var langCellWrappers = $(table).find('div.truncate-text');
         this.debug(["is translation table found. ", table, langCellWrappers]);
-        langCellWrappers.each(function( index ) {
+        langCellWrappers.each(function (index) {
             var text = $(this).text();
             SetTranslation._instance.translateNameLangs.push(text);
             SetTranslation._instance.debug(["cell", text]);
@@ -118,7 +154,7 @@ class SetTranslation {
         this.debug(["Found langs in pick list", SetTranslation._instance.translateNameLangs]);
     }
 
-    async readLangCsvFile(event){
+    async readLangCsvFile(event) {
         SetTranslation._instance.fileHeaders = [];
         SetTranslation._instance.rowFileData = [];
         SetTranslation._instance.debug(["readLangCsvFile", event]);
@@ -126,28 +162,28 @@ class SetTranslation {
         const text = await file.text();
         var lines = text.split(/\r?\n|\r|\n/g);
         SetTranslation._instance.debug(["File input", text, lines]);
-        var headerRow = lines[SetTranslation._instance.headerRow-1];
+        var headerRow = lines[SetTranslation._instance.headerRow - 1];
         headerRow.split(";").forEach(element => {
             SetTranslation._instance.fileHeaders.push(element);
         });
-        for(var i = SetTranslation._instance.headerRow; i < lines.length; i++) {
+        for (var i = SetTranslation._instance.headerRow; i < lines.length; i++) {
             SetTranslation._instance.rowFileData.push(lines[i].split(";"));
         }
         SetTranslation._instance.debug(["Found Headers", SetTranslation._instance.fileHeaders, SetTranslation._instance.rowFileData]);
         SetTranslation._instance.resetFileIndexSelection();
     }
 
-    resetFileIndexSelection(){
+    resetFileIndexSelection() {
         SetTranslation._instance.debug(["resetFileIndexSelection"]);
         SetTranslation._instance.resetSelectionList('#fmp-csv-file-index', SetTranslation._instance.fileHeaders);
     }
 
-    resetTranslationSelectList(){
+    resetTranslationSelectList() {
         SetTranslation._instance.debug(["resetTranslationSelectList"]);
         SetTranslation._instance.resetSelectionList('#fmp-translation-index', SetTranslation._instance.translateNameLangs);
     }
 
-    resetSelectionList(selector, options){
+    resetSelectionList(selector, options) {
         $(selector).find('option').remove();
         options.forEach(element => {
             $(selector).append(`<option value="${element}">${element}</option>`);
@@ -157,26 +193,26 @@ class SetTranslation {
         SetTranslation._instance.setTranslationConfig();
     }
 
-    setTranslationConfig(){
+    setTranslationConfig() {
         SetTranslation._instance.debug(["setTranslationConfig", SetTranslation._instance.selectedFileIndex, SetTranslation._instance.selectedTranslateNameIndex]);
-        if(SetTranslation._instance.rowFileData.length > 0 && SetTranslation._instance.translateNameLangs.length > 0){
+        if (SetTranslation._instance.rowFileData.length > 0 && SetTranslation._instance.translateNameLangs.length > 0) {
             $('.translation-config-wrapper').empty();
             SetTranslation._instance.translateNameLangs.forEach(element => {
-                if(element != SetTranslation._instance.selectedTranslateNameIndex){
+                if (element != SetTranslation._instance.selectedTranslateNameIndex) {
                     $('.translation-config-wrapper').append(SetTranslation._instance.getTranslationConfigElement(element));
                 }
             });
         }
     }
 
-    getTranslationConfigElement(title){
+    getTranslationConfigElement(title) {
         var options = `<option value=""></option>`;
         SetTranslation._instance.fileHeaders.forEach(element => {
-            if(element != SetTranslation._instance.selectedFileIndex){
+            if (element != SetTranslation._instance.selectedFileIndex) {
                 options += `<option value="${element}">${element}</option>`
             }
         });
-        return `<div class="row">
+        return `<div class="row translation-config-row">
                     <span>${title}</span>
                     <select id="element-for-${title}">${options}</select>
                 </div>`;
@@ -203,9 +239,37 @@ class SetTranslation {
         });
     }
 
-    debug(message){
-        if(this.isDebug) {
+    log(message) {
+        $("#fmp-set-translation-log").val(message);
+    }
+
+    debug(message) {
+        if (this.isDebug) {
             console.log(message);
+        }
+    }
+}
+
+class TranslationConfig {
+
+    constructor(targetLang, indexLang, sourceColumnIndex, sourceColumnTarget, sourceColumns, data) {
+        this.targetLang = targetLang;
+        this.indexLang = indexLang;
+        this.sourceColumnIndex = sourceColumnIndex;
+        this.sourceColumnTarget = sourceColumnTarget;
+        this.sourceColumns = sourceColumns;
+        this.data = data;
+        this.createMap();
+    }
+
+    createMap() {
+        this.translationMap = new Map([]);
+        var indexColumn = this.sourceColumns.indexOf(this.sourceColumnIndex);
+        var targetColumn = this.sourceColumns.indexOf(this.sourceColumnTarget);
+        for (var i = 0; i < this.data.length; i++) {
+            var key = this.data[i][indexColumn];
+            var val = this.data[i][targetColumn];
+            this.translationMap.set(key, val);
         }
     }
 }
@@ -240,6 +304,9 @@ const MAIN_PANEL = `
         </div>
         <div class="row">
             <button class="btn-start">Start</button>
+        </div>
+        <div class="row">
+            <span>Log:</span><input readonly id="fmp-set-translation-log" type="text"/>
         </div>
     </div>
 </div>
