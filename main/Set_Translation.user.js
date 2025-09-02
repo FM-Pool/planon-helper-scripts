@@ -33,7 +33,7 @@ class SetTranslation {
     // translation Config
     selectedTranslateNameIndex;
     selectedFileIndex;
-    configs;
+    configs = [];
 
     constructor() {
         if (SetTranslation._instance) {
@@ -84,9 +84,12 @@ class SetTranslation {
 
     startTranslation() {
         SetTranslation._instance.debug("Start translation");
-        SetTranslation._instance.prepareTranslationConfig();
+        // TODO remove this line and uncomment rest
+        SetTranslation._instance.prepareStart();
+        //SetTranslation._instance.prepareTranslationConfig();
         if(SetTranslation._instance.configs.length > 0){
             SetTranslation._instance.log("Config okay. Start setting translations.");
+            //SetTranslation._instance.prepareStart();
         } else {
             SetTranslation._instance.log("No replacement configured. Please check config.");
         }
@@ -120,6 +123,68 @@ class SetTranslation {
                 );
             }
         });
+    }
+
+    prepareStart(){
+        
+        this.debug(["prepareStart", $("caption")]);
+        SetTranslation._instance.clickThroughList(SetTranslation._instance.getClickableItemList(), 247);
+        /*
+        $(table).find("tbody tr").each(function (index) {
+            var code = $(this).find(":nth-child(2)").text().trim();
+            SetTranslation._instance.debug(["pick list code", $(this), code]);
+            $(this).click();
+
+        });
+        */
+    }
+
+    getClickableItemList(){
+        // TODO make configurable
+        var regExCaptionText = "Picklist";
+        var table;
+        $("caption").each(function (index) {
+            var text = $(this).text();
+            if(text.includes(regExCaptionText)) {
+                table = $(this).parent();
+            }
+        });
+        this.debug([$("caption"), table]);
+        return $(table).find("tbody tr");
+    }
+
+    clickThroughList(list, index){
+        SetTranslation._instance.debug(["clickThroughList", list, index]);
+        if(index == list.length){
+            SetTranslation._instance.goToNextPage();
+            SetTranslation._instance.log("Finished");
+            return;
+        }
+        var currentElement = list[index];
+        var code = $(currentElement).find(":nth-child(2)").text().trim();
+        $(currentElement).click();
+        SetTranslation._instance.waitForElm('input[value="' + code + '"]').then((elm) => {
+            SetTranslation._instance.clickThroughList(list, index + 1);
+        });
+    }
+
+    goToNextPage() {
+        SetTranslation._instance.debug(["goToNextPage"]);
+        if ($(".ProxyNavigator").length) {
+            var currentPage = $('a.page-link[disabled="disabled"] span').text();
+            var nextPage = Number(currentPage) + 1;
+            SetTranslation._instance.debug([".ProxyNavigator", currentPage, nextPage]);
+            $("span.page-link-bg").each(function (index) {
+                var text = $(this).text();
+                if(nextPage == text) {
+                    $(this).parent().click();
+                    SetTranslation._instance.waitForElm('a.page-link[disabled="disabled"][title*="' + text + '"]').then((elm) => {
+                        SetTranslation._instance.clickThroughList(SetTranslation._instance.getClickableItemList(), 0);
+                    });
+                    return;
+                }
+            });
+        }
     }
 
     setTranslationAndSave() {
