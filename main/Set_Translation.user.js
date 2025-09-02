@@ -92,14 +92,13 @@ class SetTranslation {
         SetTranslation._instance.pickListLang = [];
         var table = $(SELECTOR_FOR_TRANSLATION_TABLE).parent().parent().parent();
         var langCellWrappers = $(table).find('div.truncate-text');
-        this.debug(["is translation table found. ",
-            table, langCellWrappers]);
+        this.debug(["is translation table found. ", table, langCellWrappers]);
         langCellWrappers.each(function( index ) {
             var text = $(this).text();
             SetTranslation._instance.pickListLang.push(text);
             SetTranslation._instance.debug(["cell", text]);
-            
         });
+        SetTranslation._instance.resetTranslationSelectList()
         this.debug(["Found langs in pick list", SetTranslation._instance.pickListLang]);
     }
 
@@ -119,6 +118,24 @@ class SetTranslation {
             SetTranslation._instance.rowFileData.push(lines[i].split(";"));
         }
         SetTranslation._instance.debug(["Found Headers", SetTranslation._instance.fileHeaders, SetTranslation._instance.rowFileData]);
+        SetTranslation._instance.resetFileIndexSelection();
+    }
+
+    resetFileIndexSelection(){
+        SetTranslation._instance.debug(["resetFileIndexSelection"]);
+        SetTranslation._instance.resetSelectionList('#fmp-csv-file-index', SetTranslation._instance.fileHeaders);
+    }
+
+    resetTranslationSelectList(){
+        SetTranslation._instance.debug(["resetTranslationSelectList"]);
+        SetTranslation._instance.resetSelectionList('#fmp-translation-index', SetTranslation._instance.pickListLang);
+    }
+
+    resetSelectionList(selector, options){
+        $(selector).find('option').remove();
+        options.forEach(element => {
+            $(selector).append(`<option value="${element}">${element}</option>`);
+        });
     }
 
     waitForElm(selector) {
@@ -170,7 +187,10 @@ const MAIN_PANEL = `
             <span>CSV Datei:</span><input id="csv-lang-file" type="file"/>
         </div>
         <div class="row">
-            <span>Sprache:</span><input id="language" type="text"/><button class="refresh-available-lang">&#x21bb;</button>
+            <span>Pick List Index:</span><select id="fmp-translation-index"></select><button class="refresh-available-lang">&#x21bb;</button>
+        </div>
+        <div class="row">
+            <span>CSV Datei Index Spalte:</span><select id="fmp-csv-file-index"></select>
         </div>
         <div class="row">
             <button class="btn-start">Start</button>
