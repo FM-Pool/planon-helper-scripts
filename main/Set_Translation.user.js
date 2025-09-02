@@ -22,11 +22,15 @@ class SetTranslation {
 
     isDebug = true;
     
-    pickListLang = [];
+    translateNameLangs = [];
+
+    selectedTranslateNameIndex;
 
     fileHeaders = [];
 
     rowFileData = [];
+
+    selectedFileIndex;
     
     headerRow = 9;
 
@@ -63,7 +67,19 @@ class SetTranslation {
         });
         $("#csv-lang-file").on("change", function(event) { 
             SetTranslation._instance.readLangCsvFile(event);
-        } );
+        });
+        SetTranslation._instance.debug(["#fmp-translation-index onChange", $("#fmp-translation-index")]);
+        $("#fmp-translation-index").on("change", function() { 
+            SetTranslation._instance.debug(["#fmp-translation-index onChange", this]);
+            SetTranslation._instance.selectedTranslateNameIndex = this.value;
+            SetTranslation._instance.setTranslationConfig();
+        });
+        SetTranslation._instance.debug(["#fmp-csv-file-index onChange", $("#fmp-csv-file-index")]);
+        $("#fmp-csv-file-index").on("change", function() { 
+            SetTranslation._instance.debug(["#fmp-csv-file-index onChange", this]);
+            SetTranslation._instance.selectedFileIndex = this.value;
+            SetTranslation._instance.setTranslationConfig();
+        });
     }
 
     startTranslation(){
@@ -89,17 +105,17 @@ class SetTranslation {
 
     getLangFromPicklist(){
         this.debug("start getLangFromPicklist");
-        SetTranslation._instance.pickListLang = [];
+        SetTranslation._instance.translateNameLangs = [];
         var table = $(SELECTOR_FOR_TRANSLATION_TABLE).parent().parent().parent();
         var langCellWrappers = $(table).find('div.truncate-text');
         this.debug(["is translation table found. ", table, langCellWrappers]);
         langCellWrappers.each(function( index ) {
             var text = $(this).text();
-            SetTranslation._instance.pickListLang.push(text);
+            SetTranslation._instance.translateNameLangs.push(text);
             SetTranslation._instance.debug(["cell", text]);
         });
         SetTranslation._instance.resetTranslationSelectList()
-        this.debug(["Found langs in pick list", SetTranslation._instance.pickListLang]);
+        this.debug(["Found langs in pick list", SetTranslation._instance.translateNameLangs]);
     }
 
     async readLangCsvFile(event){
@@ -128,7 +144,7 @@ class SetTranslation {
 
     resetTranslationSelectList(){
         SetTranslation._instance.debug(["resetTranslationSelectList"]);
-        SetTranslation._instance.resetSelectionList('#fmp-translation-index', SetTranslation._instance.pickListLang);
+        SetTranslation._instance.resetSelectionList('#fmp-translation-index', SetTranslation._instance.translateNameLangs);
     }
 
     resetSelectionList(selector, options){
@@ -136,6 +152,34 @@ class SetTranslation {
         options.forEach(element => {
             $(selector).append(`<option value="${element}">${element}</option>`);
         });
+        $(selector).val($(selector).find('option').first().val()).change();
+        // Maybe explicit call is better, but for now it is fine when one of the selection has changed;
+        SetTranslation._instance.setTranslationConfig();
+    }
+
+    setTranslationConfig(){
+        SetTranslation._instance.debug(["setTranslationConfig", SetTranslation._instance.selectedFileIndex, SetTranslation._instance.selectedTranslateNameIndex]);
+        if(SetTranslation._instance.rowFileData.length > 0 && SetTranslation._instance.translateNameLangs.length > 0){
+            $('.translation-config-wrapper').empty();
+            SetTranslation._instance.translateNameLangs.forEach(element => {
+                if(element != SetTranslation._instance.selectedTranslateNameIndex){
+                    $('.translation-config-wrapper').append(SetTranslation._instance.getTranslationConfigElement(element));
+                }
+            });
+        }
+    }
+
+    getTranslationConfigElement(title){
+        var options = `<option value=""></option>`;
+        SetTranslation._instance.fileHeaders.forEach(element => {
+            if(element != SetTranslation._instance.selectedFileIndex){
+                options += `<option value="${element}">${element}</option>`
+            }
+        });
+        return `<div class="row">
+                    <span>${title}</span>
+                    <select id="element-for-${title}">${options}</select>
+                </div>`;
     }
 
     waitForElm(selector) {
@@ -191,6 +235,8 @@ const MAIN_PANEL = `
         </div>
         <div class="row">
             <span>CSV Datei Index Spalte:</span><select id="fmp-csv-file-index"></select>
+        </div>
+        <div class="row translation-config-wrapper">
         </div>
         <div class="row">
             <button class="btn-start">Start</button>
