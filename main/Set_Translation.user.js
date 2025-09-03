@@ -292,6 +292,7 @@ class SetTranslation {
         SetTranslation._instance.debug(["setTranslationConfig", SetTranslation._instance.selectedFileIndex, SetTranslation._instance.selectedTranslateNameIndex]);
         if (SetTranslation._instance.rowFileData.length > 0 && SetTranslation._instance.translateNameLangs.length > 0) {
             $('.translation-config-wrapper').empty();
+            $('.translation-config-wrapper').show();
             SetTranslation._instance.translateNameLangs.forEach(element => {
                 if (element != SetTranslation._instance.selectedTranslateNameIndex) {
                     $('.translation-config-wrapper').append(SetTranslation._instance.getTranslationConfigElement(element));
@@ -395,26 +396,35 @@ if (module !== undefined && module.exports !== undefined) {
 
 const MAIN_PANEL = `
 <div id="FMPool-SetTranslation" class="mainPanel navbar">
-    <div class="menu">
-        <button class="set-translation-main-button">Open</button>
+    <div class="row">
+        <div class="menu">
+            <img src="https://fmpool.it/media/favicon.png" />
+            <button class="set-translation-main-button">&#x1F310;</button>
+        </div>
     </div>
     <div class="controls">
-        <div class="row">
-            <span>CSV Datei:</span><input id="csv-lang-file" type="file"/>
+        <div class="translation-config">
+            <div class="row">
+                <span>CSV Datei:</span><input id="csv-lang-file" type="file"/>
+            </div>
+            <div class="row">
+                <span>Sprache für Index:</span><select id="fmp-translation-index"></select><button class="refresh-available-lang">&#x21bb;</button>
+            </div>
+            <div class="row">
+                <span>CSV Datei Index Spalte:</span><select id="fmp-csv-file-index"></select>
+            </div>
         </div>
         <div class="row">
-            <span>Pick List Index:</span><select id="fmp-translation-index"></select><button class="refresh-available-lang">&#x21bb;</button>
+            <div class="translation-config-wrapper">
+            </div>
         </div>
-        <div class="row">
-            <span>CSV Datei Index Spalte:</span><select id="fmp-csv-file-index"></select>
+        <div class="control-process">
+            <div class="row">
+                <button class="btn-control-process btn-start">&#x25B8;</button>
+                <button class="btn-control-process btn-abort">&#x2A2f;</button>
+            </div>
         </div>
-        <div class="row translation-config-wrapper">
-        </div>
-        <div class="row">
-            <button class="btn-start">Start</button>
-            <button class="btn-abort">Abort</button>
-        </div>
-        <div class="row">
+        <div class="row log">
             <span>Log:</span><input readonly id="fmp-set-translation-log" type="text"/>
         </div>
     </div>
@@ -422,14 +432,63 @@ const MAIN_PANEL = `
 `;
 
 GM_addStyle(`
-#FMPool-SetTranslation {
-    position: absolute;
-    top: 60px;
-    right: 0;
-    z-index: 5;
-    background-color: rgb(217, 234, 211);
-}
-.controls {
-    //display:none;
-}
+    #FMPool-SetTranslation {
+        position: absolute;
+        top: 60px;
+        right: 0;
+        z-index: 5;
+        background-color: rgb(217, 234, 211);
+        color: #000000;
+        padding: 4px;
+        border-style: solid;
+        border-width: 2px;
+        border-color: #fee900;
+    }
+    .menu {
+        justify-content: center;
+        align-items: center;
+        display: flex;
+    }
+    .menu * {
+        margin-left: 5px;
+    }
+    .set-translation-main-button {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+    }
+    .controls {
+        display:none;
+        margin-top:3px;
+    }
+    .translation-config, .translation-config-wrapper {
+        border-style: dashed;
+        padding: 2px;
+        border-width: 1.5px;
+        border-radius: 5px;
+    }
+    .translation-config-wrapper {
+        margin-top: 3px;
+        display:none;
+    }
+    .control-process {
+        border-style: solid;
+        margin-top: 3px;
+        padding: 2px;
+        border-width: 1.5px;
+        border-radius: 5px;
+        text-align: center;
+    }
+    .btn-control-process {
+        font-size: 20px;
+    }
+    .btn-start {
+        background-color: darkgreen;
+    }
+    .btn-abort {
+        background-color: red;
+    }
+    .log {
+        margin-top:3px;
+    }
 `);
