@@ -14,7 +14,7 @@
 
 const CHECK_FOR_SELECTOR_TO_CREATE_CONTROL = '.PnWebPagedDrillDownListPanel';
 const SELECTOR_FOR_ADDING_PANEL = 'body';
-const SELECTOR_FOR_TRANSLATION_TABLE = 'th[data-title*="Translation"]'; // [data-title*="Translation text"]
+const SELECTOR_FOR_TRANSLATION_TABLE = 'th[data-title*="Translation"]';
 
 const MAIN_PANEL_ID = 'FMPool-SetTranslation';
 
@@ -35,12 +35,15 @@ class SetTranslation {
     selectedFileIndex;
     configs = [];
 
+    // intern
+    abort = false;
+
     constructor() {
         if (SetTranslation._instance) {
             return SetTranslation._instance;
         }
         SetTranslation._instance = this;
-        SetTranslation._instance.debug("Init SetTranslation");
+        SetTranslation._instance.debug(["Init SetTranslation"]);
         this.createMenu();
     }
 
@@ -65,6 +68,9 @@ class SetTranslation {
         $(".btn-start").click(function () {
             SetTranslation._instance.startTranslation();
         });
+        $(".btn-abort").click(function () {
+            SetTranslation._instance.abort = true;
+        });
         $("#csv-lang-file").on("change", function (event) {
             SetTranslation._instance.readLangCsvFile(event);
         });
@@ -83,13 +89,12 @@ class SetTranslation {
     }
 
     startTranslation() {
-        SetTranslation._instance.debug("Start translation");
-        // TODO remove this line and uncomment rest
-        SetTranslation._instance.prepareStart();
-        //SetTranslation._instance.prepareTranslationConfig();
+        SetTranslation._instance.debug(["Start translation"]);
+        SetTranslation._instance.abort = false;
+        SetTranslation._instance.prepareTranslationConfig();
         if(SetTranslation._instance.configs.length > 0){
             SetTranslation._instance.log("Config okay. Start setting translations.");
-            //SetTranslation._instance.prepareStart();
+            SetTranslation._instance.prepareStart();
         } else {
             SetTranslation._instance.log("No replacement configured. Please check config.");
         }
@@ -126,17 +131,8 @@ class SetTranslation {
     }
 
     prepareStart(){
-        
         this.debug(["prepareStart", $("caption")]);
-        SetTranslation._instance.clickThroughList(SetTranslation._instance.getClickableItemList(), 247);
-        /*
-        $(table).find("tbody tr").each(function (index) {
-            var code = $(this).find(":nth-child(2)").text().trim();
-            SetTranslation._instance.debug(["pick list code", $(this), code]);
-            $(this).click();
-
-        });
-        */
+        SetTranslation._instance.clickThroughList(SetTranslation._instance.getClickableItemList(), 0);
     }
 
     getClickableItemList(){
@@ -155,16 +151,24 @@ class SetTranslation {
 
     clickThroughList(list, index){
         SetTranslation._instance.debug(["clickThroughList", list, index]);
+        if(SetTranslation._instance.abort) {
+            SetTranslation._instance.debug(["abort", list, index]);
+            SetTranslation._instance.log("Abort");
+            return;
+        }
         if(index == list.length){
-            SetTranslation._instance.goToNextPage();
-            SetTranslation._instance.log("Finished");
+            var hasNextPage = SetTranslation._instance.goToNextPage();
+            if(!hasNextPage) {
+                SetTranslation._instance.log("Finished");
+            }            
             return;
         }
         var currentElement = list[index];
         var code = $(currentElement).find(":nth-child(2)").text().trim();
         $(currentElement).click();
+        SetTranslation._instance.debug(["clickThroughList -> clicked next element", currentElement, code]);
         SetTranslation._instance.waitForElm('input[value="' + code + '"]').then((elm) => {
-            SetTranslation._instance.clickThroughList(list, index + 1);
+            SetTranslation._instance.setTranslationAndSave(list, index + 1);
         });
     }
 
@@ -181,31 +185,57 @@ class SetTranslation {
                     SetTranslation._instance.waitForElm('a.page-link[disabled="disabled"][title*="' + text + '"]').then((elm) => {
                         SetTranslation._instance.clickThroughList(SetTranslation._instance.getClickableItemList(), 0);
                     });
-                    return;
+                    return true;
                 }
             });
         }
+        return false;
     }
 
-    setTranslationAndSave() {
-        SetTranslation._instance.debug("Set translation");
-        $("span.editButton")[0].click();
-        SetTranslation._instance.waitForElm('input.cellEditor').then((elm) => {
-            elm.value = "asdsad";
-            // Click another element to accept input
-            $("span.editButton")[1].click();
-            var saveButton = $("a.actionButton.BomSave.btn");
-            SetTranslation._instance.debug(["translation element", $(elm), saveButton]);
-            SetTranslation._instance.waitForElm('a.BomSave[aria-disabled="false"]').then((elm) => {
-                SetTranslation._instance.debug(["click save Translation", $(elm)]);
-                $(elm).click();
-            });
-
+    setTranslationAndSave(list, index) {
+        SetTranslation._instance.debug(["Set translation", list, index]);
+        SetTranslation._instance.configs.forEach(config => {
+            var targetLang = config.getTargetLanguage();
+            var indexLang = config.getIndexLanguage();
+            var indexValue = SetTranslation._instance.getTextByLang(indexLang);
+            var translation = config.getTranslatedText(indexValue);
+            SetTranslation._instance.debug(["execute config", config, targetLang]);
+            SetTranslation._instance.setTextForLang(targetLang, translation, indexLang, list, index);
         });
     }
 
+    getTextByLang(lang) {
+        SetTranslation._instance.debug(["getTextByLang", $(`div[title="${lang}"]`)]);
+        var tableRowParent = SetTranslation._instance.getTableRowForLang(lang);
+        return tableRowParent.find('span.labelledFieldValue').text();
+    }
+
+    setTextForLang(lang, text, langForRandomClick, list, index) {
+        SetTranslation._instance.debug(["setTextForLang", lang, text, langForRandomClick]);
+        var tableRowParent = SetTranslation._instance.getTableRowForLang(lang);
+        $(tableRowParent.find('span.editButton')).click();
+        SetTranslation._instance.waitForElm('input.cellEditor').then((elm) => {
+            elm.value = text;
+             // Click another element to accept input
+            var randomRowParent = SetTranslation._instance.getTableRowForLang(langForRandomClick);
+            $(randomRowParent.find('span.editButton')).click();
+            SetTranslation._instance.debug(["setTextForLang", $(elm), randomRowParent]);
+            SetTranslation._instance.waitForElm('a.BomSave[aria-disabled="false"]').then((elm) => {
+                SetTranslation._instance.debug(["click save Translation", $(elm)]);
+                $(elm).click();
+                SetTranslation._instance.waitForElm('a.BomSave[aria-disabled="true"]').then((elm) => {
+                    SetTranslation._instance.clickThroughList(list, index);
+                });
+            });
+        });
+    }
+
+    getTableRowForLang(lang){
+        return $(`div[title="${lang}"]`).parent().parent();
+    }
+
     getLangFromPicklist() {
-        this.debug("start getLangFromPicklist");
+        this.debug(["start getLangFromPicklist"]);
         SetTranslation._instance.translateNameLangs = [];
         var table = $(SELECTOR_FOR_TRANSLATION_TABLE).parent().parent().parent();
         var langCellWrappers = $(table).find('div.truncate-text');
@@ -310,6 +340,7 @@ class SetTranslation {
 
     debug(message) {
         if (this.isDebug) {
+            message.push(SetTranslation._instance);
             console.log(message);
         }
     }
@@ -336,6 +367,18 @@ class TranslationConfig {
             var val = this.data[i][targetColumn];
             this.translationMap.set(key, val);
         }
+    }
+
+    getTargetLanguage() {
+        return this.targetLang;
+    }
+
+    getIndexLanguage() {
+        return this.indexLang;
+    }
+
+    getTranslatedText(key) {
+        return this.translationMap.get(key);
     }
 }
 
@@ -369,6 +412,7 @@ const MAIN_PANEL = `
         </div>
         <div class="row">
             <button class="btn-start">Start</button>
+            <button class="btn-abort">Abort</button>
         </div>
         <div class="row">
             <span>Log:</span><input readonly id="fmp-set-translation-log" type="text"/>
