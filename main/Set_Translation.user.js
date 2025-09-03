@@ -29,6 +29,7 @@ class SetTranslation {
     fileHeaders = [];
     rowFileData = [];
     headerRow = 9;
+    rawFileContent = "";
 
     // translation Config
     selectedTranslateNameIndex;
@@ -54,6 +55,7 @@ class SetTranslation {
                 this.debug(["Selector for adding panel exist.", $(SELECTOR_FOR_ADDING_PANEL)]);
                 $(SELECTOR_FOR_ADDING_PANEL).append(MAIN_PANEL);
                 this.addControls();
+                this.setDefaults();
             });
         });
     }
@@ -74,6 +76,9 @@ class SetTranslation {
         $("#csv-lang-file").on("change", function (event) {
             SetTranslation._instance.readLangCsvFile(event);
         });
+        $("#csv-lang-file-hedaer-row").on("change", function (event) {
+            SetTranslation._instance.csvFileIndexChanged(event);
+        });
         SetTranslation._instance.debug(["#fmp-translation-index onChange", $("#fmp-translation-index")]);
         $("#fmp-translation-index").on("change", function () {
             SetTranslation._instance.debug(["#fmp-translation-index onChange", this]);
@@ -86,6 +91,10 @@ class SetTranslation {
             SetTranslation._instance.selectedFileIndex = this.value;
             SetTranslation._instance.setTranslationConfig();
         });
+    }
+
+    setDefaults(){
+        $("#csv-lang-file-hedaer-row").val(this.headerRow);
     }
 
     startTranslation() {
@@ -165,6 +174,7 @@ class SetTranslation {
         }
         var currentElement = list[index];
         var code = $(currentElement).find(":nth-child(2)").text().trim();
+        SetTranslation._instance.log(`Set item (Code: ${code}) ${index} of ${list.length} on current page.`);
         $(currentElement).click();
         SetTranslation._instance.debug(["clickThroughList -> clicked next element", currentElement, code]);
         SetTranslation._instance.waitForElm('input[value="' + code + '"]').then((elm) => {
@@ -250,11 +260,20 @@ class SetTranslation {
     }
 
     async readLangCsvFile(event) {
+        SetTranslation._instance.debug(["readLangCsvFile", event]);
+        SetTranslation._instance.rawFileContent = "";
+        const file = event.target.files.item(0)
+        SetTranslation._instance.rawFileContent = await file.text();
+        SetTranslation._instance.prcessCsvFile();
+    }
+
+    prcessCsvFile(){
+        const text = SetTranslation._instance.rawFileContent;
+        if(text == ""){
+            return;
+        }
         SetTranslation._instance.fileHeaders = [];
         SetTranslation._instance.rowFileData = [];
-        SetTranslation._instance.debug(["readLangCsvFile", event]);
-        const file = event.target.files.item(0)
-        const text = await file.text();
         var lines = text.split(/\r?\n|\r|\n/g);
         SetTranslation._instance.debug(["File input", text, lines]);
         var headerRow = lines[SetTranslation._instance.headerRow - 1];
@@ -266,6 +285,12 @@ class SetTranslation {
         }
         SetTranslation._instance.debug(["Found Headers", SetTranslation._instance.fileHeaders, SetTranslation._instance.rowFileData]);
         SetTranslation._instance.resetFileIndexSelection();
+    }
+
+    csvFileIndexChanged(event){
+        SetTranslation._instance.debug(["csvFileIndexChanged", event, event.target.value]);
+        SetTranslation._instance.headerRow = new Number(event.target.value);
+        SetTranslation._instance.prcessCsvFile();
     }
 
     resetFileIndexSelection() {
@@ -405,18 +430,23 @@ const MAIN_PANEL = `
     <div class="controls">
         <div class="translation-config">
             <div class="row">
-                <span>CSV Datei:</span><input id="csv-lang-file" type="file"/>
+                <div class="row">
+                    <span>CSV File:</span><input id="csv-lang-file" type="file"/>
+                </div>
+                <div class="row">
+                    <span>Number Header Row:</span><input id="csv-lang-file-hedaer-row" type="number"/>
+                </div>
             </div>
             <div class="row">
-                <span>Sprache für Index:</span><select id="fmp-translation-index"></select><button class="refresh-available-lang">&#x21bb;</button>
+                <span>Language Index (Planon):</span><select id="fmp-translation-index"></select><button class="refresh-available-lang">&#x21bb;</button>
             </div>
             <div class="row">
-                <span>CSV Datei Index Spalte:</span><select id="fmp-csv-file-index"></select>
+                <span>CSV File Index Column:</span><select id="fmp-csv-file-index"></select>
             </div>
         </div>
         <div class="row">
             <div class="translation-config-wrapper">
-            </div>
+        </div>
         </div>
         <div class="control-process">
             <div class="row">
@@ -425,14 +455,19 @@ const MAIN_PANEL = `
             </div>
         </div>
         <div class="row log">
-            <span>Log:</span><input readonly id="fmp-set-translation-log" type="text"/>
+            <div class="row">
+                <span>Log:</span>
+            </div>
+            <div class="row">
+                <textarea readonly id="fmp-set-translation-log"></textarea>
+            </div>
         </div>
     </div>
 </div>
 `;
 
 GM_addStyle(`
-    #FMPool-SetTranslation {
+    body div#FMPool-SetTranslation {
         position: absolute;
         top: 60px;
         right: 0;
@@ -443,6 +478,9 @@ GM_addStyle(`
         border-style: solid;
         border-width: 2px;
         border-color: #fee900;
+    }
+    #FMPool-SetTranslation button {
+        cursor: pointer;
     }
     .menu {
         justify-content: center;
@@ -490,5 +528,10 @@ GM_addStyle(`
     }
     .log {
         margin-top:3px;
+    }
+    #fmp-set-translation-log{
+        width: 100%;
+        background-color: lightgrey;
+        color:#000000 !important;
     }
 `);
