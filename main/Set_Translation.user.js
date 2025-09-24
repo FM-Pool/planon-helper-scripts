@@ -260,12 +260,31 @@ class SetTranslation {
     }
 
     async readLangCsvFile(event) {
-        SetTranslation._instance.debug(["readLangCsvFile", event]);
-        SetTranslation._instance.rawFileContent = "";
-        const file = event.target.files.item(0)
-        SetTranslation._instance.rawFileContent = await file.text();
-        SetTranslation._instance.prcessCsvFile();
+    SetTranslation._instance.debug(["readLangCsvFile", event]);
+    SetTranslation._instance.rawFileContent = "";
+
+    const file = event.target.files.item(0);
+    const arrayBuffer = await file.arrayBuffer();
+
+    let text;
+    let encodingUsed = "utf-8";
+    try {
+        // Erst UTF-8 probieren
+        text = new TextDecoder("utf-8").decode(arrayBuffer);
+        if (text.includes("�")) {
+            throw new Error("Invalid UTF-8 detected");
+        }
+    } catch (e) {
+        // falls nicht funktioniert fall back to: latin1 (ISO-8859-1)
+        encodingUsed = "latin1";
+        text = new TextDecoder("latin1").decode(arrayBuffer);
     }
+
+    SetTranslation._instance.rawFileContent = text;
+    SetTranslation._instance.log(`CSV erfolgreich geladen (Encoding: ${encodingUsed})`);
+    SetTranslation._instance.prcessCsvFile();
+}
+
 
     prcessCsvFile(){
         const text = SetTranslation._instance.rawFileContent;
