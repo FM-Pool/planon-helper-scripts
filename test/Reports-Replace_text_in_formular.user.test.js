@@ -50,4 +50,24 @@ describe('Reports-Replace_text_in_formular', () => {
     // Assert
     expect(actual).toBe(expected);
   });
+
+  test('getLinks should find the correct links', () => {
+    // Arrange
+    //$("body").append(config);
+    $("body").append(column);
+
+    //console.log(["from TEst", myInstance]);
+
+
+    var sut = new clazz();
+    var actual = sut.getLinks();
+
+    var expected = '01-04-2025, 01-04-2025';
+
+    // Act
+    sut.replaceTextInFormular(['', 'myColumnText'])
+
+    // Assert
+    expect(actual).toBe(expected);
+  });
 });

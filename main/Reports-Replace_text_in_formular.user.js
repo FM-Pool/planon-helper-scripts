@@ -125,6 +125,40 @@ var $PRE_CONFIGS = [
                 replace: '"04-2025"'
             }
         ]
+    },
+    {
+        name: 'MKCO-prefatturazione_SpaceUsage_(04e)-ElencoTicket(R,C,A)',
+        params: [
+            {
+                search: '31-03-2025',
+                replace: '30-04-2025'
+            },
+            {
+                search: '01-03-2025',
+                replace: '01-04-2025'
+            }
+        ]
+    },
+    {
+        name: 'MKCO-prefatturazione_SpaceUsage_(04e)-Comp_Tipo_Ed_AreaRischio',
+        params: [
+            {
+                search: '31-03-2025',
+                replace: '30-04-2025'
+            },
+            {
+                search: '01-03-2025',
+                replace: '01-04-2025'
+            },
+            {
+                search: '28-02-2025',
+                replace: '31-03-2025'
+            },
+            {
+                search: '01-02-2025',
+                replace: '01-03-2025'
+            }
+        ]
     }
 ];
 
@@ -157,7 +191,8 @@ var $NEW_RPLACE_ITEM = `<div class="replaceItem added">Search: <input class="tex
 
 var $REPORT_CONFIG_OPTION_SELECTOR = '.reportReplaceExpressionConsole #reportConfigs';
 
-var $SELECT_FIELDS_LIST_LINK_SELECTOR = '.selectedFieldsPanel .tree-branch a.pn-node-link';
+var $SELECT_FIELDS_LIST_LINK_PARENT_SELECTOR = '.selectedFieldsPanel .tree-branch';
+var $SELECT_FIELDS_LIST_LINK_SELECTOR = 'a.pn-node-link';
 var $SETTINGS_COLUMN_TEXT_SELECTOR = '.reportPropertiesPanel .BOGrid .fields-group-container .fields-group .field-editor-con input[name*="columnHeaderTextField"]';
 var $EXPRESSION_BUILDER_OKAY_BUTTON_SELECTOR = ".PnWebReportExpressionEditorDialog .okButton";
 var $EXPRESSION_BUILDER_EXPRESSION_TEXTAREA_SELECTOR = '.expression-textarea-field[name*="expressionsPanel:expressionArea"]';
@@ -170,7 +205,7 @@ class ReplaceTextInReportFormulars {
     constructor() {
         this.config = [];
         // TODO  https://stackoverflow.com/questions/1479319/simplest-cleanest-way-to-implement-a-singleton-in-javascript
-        if(ReplaceTextInReportFormulars._instance) {
+        if (ReplaceTextInReportFormulars._instance) {
             return ReplaceTextInReportFormulars._instance;
         }
         ReplaceTextInReportFormulars._instance = this;
@@ -284,7 +319,8 @@ class ReplaceTextInReportFormulars {
         $ABORT = false;
         console.log("click button check fields");
         this.setConfig();
-        var links = $($SELECT_FIELDS_LIST_LINK_SELECTOR);
+        var links = this.getLinks();
+        console.log([links]);
         links[0].click();
         if (!$ABORT) {
             $LOGS_EXPRESSION_CHANGES = [];
@@ -341,8 +377,8 @@ class ReplaceTextInReportFormulars {
 
     errorProcessLinks(args) {
         var index = args[0];
-        var linkList = $($SELECT_FIELDS_LIST_LINK_SELECTOR);
         var instance = new ReplaceTextInReportFormulars();
+        var linkList = instance.getLinks();
         instance.processLinks(index, linkList);
     }
 
@@ -403,9 +439,25 @@ class ReplaceTextInReportFormulars {
             console.log('Expression builder closed');
             setTimeout(function () {
                 var instance = new ReplaceTextInReportFormulars();
-                instance.processLinks(index + 1, $($SELECT_FIELDS_LIST_LINK_SELECTOR));
+                instance.processLinks(index + 1, instance.getLinks());
             }, $TIME_OUT);
         });
+    }
+
+    getLinks() {
+        var parent = $($SELECT_FIELDS_LIST_LINK_PARENT_SELECTOR);
+        var links = [];
+        for(var i = 0; i < parent.length; i++){
+            // console.log([parent[i]]);
+            //console.log(parent[i]);
+            //console.log([$(parent[i]).find('.tree-subtree')]);
+            //console.log([$(parent[i]).find('.tree-subtree').children().length]);
+            if($(parent[i]).find('.tree-subtree').children().length == 0){
+                links = links.concat($($(parent[i]).find($SELECT_FIELDS_LIST_LINK_SELECTOR)));
+            }
+            
+        }
+        return links;
     }
 
     waitForElmentToAppear(selector, callback, callbackArgs) {
@@ -488,6 +540,6 @@ const myInstance = new ReplaceTextInReportFormulars();
     myInstance.createReplaceTextInExpressionPanel();
 })();
 
-if(module !== undefined && module.exports !== undefined) {
+if (module !== undefined && module.exports !== undefined) {
     module.exports = ReplaceTextInReportFormulars;
 }
