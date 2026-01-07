@@ -1,26 +1,81 @@
 // ==UserScript==
-// @name         Reports - Replace text in formular - dev local
+// @name         Reports - Replace text in formular
 // @namespace    http://tampermonkey.net/
-// @version      0.1.2
+// @version      0.1.3
 // @description  search and replace texts in report formulars
 // @author       a.boll
 // @match        https://www.tampermonkey.net/index.php?version=5.3.3&ext=dhdg&updated=true
 // @include      https://*planoncloud.com*
 // @include      file://*test.html
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=tampermonkey.net
+// @icon         https://fmpool.it/media/favicon.png
 // @grant        GM_addStyle
 // ==/UserScript==
 /* global $ */
 
 
 GM_addStyle(`
-.reportReplaceExpressionConsole {
-    border:solid;
+
+.fmpool-container {
+    border-style: dotted;
+    border-width: 2px;
+    padding: 2px;
+    background-color: rgb(217, 234, 211);
 }
-.reportReplaceExpressionConsole .button {
-    width: 100px;
-    border: solid;
+
+.reportReplaceExpressionConsole {
+    border-style:solid;
+    border-width:2px;
+    margin-top:5px;
+    display:none;
+}
+
+.button {
     cursor: pointer;
+}
+
+.fmpool-container div.menu {
+    justify-content: left;
+    align-items: center;
+    display: flex;
+}
+
+.fmpool-container .row {
+    margin-top:2px;
+    padding: 2px;
+}
+
+.fmpool-container div.menu div{
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    font-size: 24px;
+    margin-left: 3px;
+    border: solid 1px gray;
+    text-align: center;
+}
+
+.reportReplaceExpressionConsole {
+    padding:3px;
+}
+
+.reportReplaceExpressionConsole .section {
+    margin: 5px 0px;
+    border-style: dashed;
+    border-width: 1px;
+    border-color: darkgray;
+    padding: 5px 2px;
+}
+
+.reportReplaceExpressionConsole .section .header{
+    font-weight: bolder;
+    font-style: oblique;
+}
+
+.reportReplaceExpressionConsole .button {
+    border-style: solid;
+    border-width: 1px;
+    cursor: pointer;
+    padding: 1px 5px;
 }
 
 .reportReplaceExpressionConsole .controls > div {
@@ -43,7 +98,7 @@ GM_addStyle(`
     color: #000000;
 }
 .reportReplaceExpressionConsole input.log {
-    width: 300px;
+    width: 100%;
     color: #000000;
 }
 
@@ -54,6 +109,9 @@ GM_addStyle(`
     width: 750px;
     top: 0px;
     z-index: 999;
+    border-style: solid;
+    border-width: 2px;
+    border-color: dodgerblue;
 }
 
 .detailLog .content{
@@ -70,11 +128,20 @@ GM_addStyle(`
 
 .detailLogRow {
     display: inline-block;
-    width: 244px;
+    width: 248px;
     vertical-align: top;
     border: solid 1px;
     overflow: hidden;
     word-wrap: break-word;
+    height: 750px;
+    overflow: scroll;
+}
+
+.detailLogRow.old {
+    background-color: darkgrey;
+}
+.detailLogRow.new {
+    background-color: darkgrey;
 }
 
 .detailLogButton {
@@ -85,12 +152,23 @@ GM_addStyle(`
 
 .detailLogColumn.button {
     background-color: white;
-    width: 250px;
 }
 
 .detailLogRow.header {
     background-color: darkgray;
     color: black;
+    overflow: hidden;
+    height: auto;
+}
+
+.detailLogRow .search {
+    color: crimson;
+    font-weight: bolder;
+}
+
+.detailLogRow .replacement {
+    color: greenyellow;
+    font-weight: bolder;
 }
 
 `);
@@ -165,29 +243,48 @@ var $PRE_CONFIGS = [
 
 var $LOG_SELECTOR = ".reportReplaceExpressionConsole input.log"
 var $CONTROL_PANEL = `
-<div class="reportReplaceExpressionConsole">
-    <div class="controls">
-        <div class="checkFields button">Replace Text</div>
-        <div class="abortAutomation button">Abort</div>
-        <div> Report Configs:
-            <select name="reports" id="reportConfigs"></select>
+<div class="fmpool-container">
+    <div class="menu">
+        <div>
+            <img src="https://fmpool.it/media/favicon.png" />
         </div>
+        <div class="button show-replace-console-button">&#x270E;</div>
     </div>
-    <div>
-        Log: <input readonly class="log"\>
-        <div class="button detailLogButton">Details</div>
-        <div class="detailLog">
-            <div class="closeDetailog button">X</div>
-            <h2 class="detailLogHeader">Replacements:<h2>
-            <div class="content"></div>
+    <div class="reportReplaceExpressionConsole">
+        <div class="controls section">
+            <div class="checkFields button">&#x23F5;</div>
+            <div class="abortAutomation button">&#x23F9;</div>
         </div>
-    </div>
-    <div class="replaceValues">
-        <div class="replaceItem fix">Search: <input class="textInput search" /> Replace: <input class="textInput replace"/><div class="addInput button">+</div></div>
+        <div class="section">
+            <div class="header">Logging</div>
+            <div class="row">
+                <input id="fmpool-report-text-replace-log-output" readonly class="log"\>
+            </div>
+            <div class="row">
+                <div class="button detailLogButton">Details</div>
+            </div>
+            <div class="detailLog">
+                <div class="closeDetailog button">X</div>
+                <h2 class="detailLogHeader">Replacements:<h2>
+                <div class="content"></div>
+            </div>
+        </div>
+        <div class="replace-config section">
+            <div class="header">Replacement Configuration</div>
+            <div class="row">
+                Default Configs: <select name="reports" id="reportConfigs"></select>
+            </div>
+            <div class="replaceValues row">
+                <div class="replaceItem fix">
+                    Search: <input class="textInput search" /> Replace: <input class="textInput replace"/>
+                </div>
+            </div>
+            <div class="addInput button">+</div>
+        </div>
     </div>
 </div>
 `;
-var $NEW_RPLACE_ITEM = `<div class="replaceItem added">Search: <input class="textInput search" /> Replace: <input class="textInput replace"/><div class="removeInput button">-</div></div>`;
+var $NEW_REPLACE_ITEM = `<div class="replaceItem added">Search: <input class="textInput search" /> Replace: <input class="textInput replace"/><div class="removeInput button">-</div></div>`;
 
 var $REPORT_CONFIG_OPTION_SELECTOR = '.reportReplaceExpressionConsole #reportConfigs';
 
@@ -228,8 +325,6 @@ class ReplaceTextInReportFormulars {
         });
     }
 
-
-
     addReportConfig() {
         $($REPORT_CONFIG_OPTION_SELECTOR).append($('<option>', {
             value: -1,
@@ -264,8 +359,6 @@ class ReplaceTextInReportFormulars {
         });
     }
 
-
-
     addButtonAction() {
         $(".abortAutomation").click(function () {
             $ABORT = true;
@@ -282,6 +375,12 @@ class ReplaceTextInReportFormulars {
             var instance = new ReplaceTextInReportFormulars();
             instance.showLogs();
         });
+        $(".closeDetailog").click(function () {
+            $(".detailLog").toggle();
+        });
+        $("div.show-replace-console-button").click(function () {
+            $(".reportReplaceExpressionConsole").toggle();
+        });
     }
 
     showLogs() {
@@ -292,9 +391,6 @@ class ReplaceTextInReportFormulars {
         for (var i = 0; i < $LOGS_EXPRESSION_CHANGES.length; i++) {
             columns += `<div class="detailLogColumn button" data-index="${i}">${$LOGS_EXPRESSION_CHANGES[i].column}</div>`;
         }
-        $(".closeDetailog").click(function () {
-            $(".detailLog").toggle();
-        });
 
         logs += `<div>`;
         logs += `<div class="detailLogRow header">Columns</div>`;
@@ -354,7 +450,7 @@ class ReplaceTextInReportFormulars {
     }
 
     addReplaceValuesItem() {
-        $(".replaceValues").append($NEW_RPLACE_ITEM);
+        $(".replaceValues").append($NEW_REPLACE_ITEM);
         $(".replaceValues .replaceItem:last .removeInput").click(function () {
             $(this).parent().remove();
         });
@@ -415,14 +511,19 @@ class ReplaceTextInReportFormulars {
             new: ''
         }
         var i;
+        var oldFormattedText = (' ' + expressionText).slice(1);
         var instance = new ReplaceTextInReportFormulars();
         for (i = 0; i < instance.config.length; i++) {
+            oldFormattedText = oldFormattedText.replaceAll(instance.config[i].search, '<span class="search">' + instance.config[i].search + '</span>');
             expressionText = expressionText.replaceAll(instance.config[i].search, $REPLACEMENT_STRING + i);
         }
+        var newFromattedText = (' ' + expressionText).slice(1);
         for (i = 0; i < instance.config.length; i++) {
+            newFromattedText = newFromattedText.replaceAll($REPLACEMENT_STRING + i, '<span class="replacement">' + instance.config[i].replace + '</span>');
             expressionText = expressionText.replaceAll($REPLACEMENT_STRING + i, instance.config[i].replace);
         }
-        log.new = expressionText;
+        log.new = newFromattedText;
+        log.old = oldFormattedText;
         $LOGS_EXPRESSION_CHANGES.push(log);
         console.log(["exp", expressionText]);
         $($EXPRESSION_BUILDER_EXPRESSION_TEXTAREA_SELECTOR).val(expressionText);
@@ -448,10 +549,6 @@ class ReplaceTextInReportFormulars {
         var parent = $($SELECT_FIELDS_LIST_LINK_PARENT_SELECTOR);
         var links = [];
         for(var i = 0; i < parent.length; i++){
-            // console.log([parent[i]]);
-            //console.log(parent[i]);
-            //console.log([$(parent[i]).find('.tree-subtree')]);
-            //console.log([$(parent[i]).find('.tree-subtree').children().length]);
             if($(parent[i]).find('.tree-subtree').children().length == 0){
                 links = links.concat($($(parent[i]).find($SELECT_FIELDS_LIST_LINK_SELECTOR)));
             }
@@ -535,8 +632,6 @@ const myInstance = new ReplaceTextInReportFormulars();
 
 (function () {
     'use strict';
-
-    // Your code here...
     myInstance.createReplaceTextInExpressionPanel();
 })();
 
